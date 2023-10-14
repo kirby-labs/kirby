@@ -6,7 +6,7 @@ import idl from "../idl/kirby.json";
 
 dotenv.config();
 
-const PROGRAM_ID = new Web3.PublicKey("3QKjPj2ajRsyRpZfsyqpcDMyN2SF866j5jcRZ6cx4PK6");
+const PROGRAM_ID = new Web3.PublicKey("7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq");
 
 async function main() {
   const connection = new Web3.Connection("http://127.0.0.1:8899", 'confirmed');

@@ -1,5 +1,6 @@
 #![allow(clippy::result_large_err)]
 
+use anchor_lang::prelude::borsh::{BorshDeserialize, BorshSerialize};
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use std::borrow::BorrowMut;
@@ -296,8 +297,8 @@ pub struct Subscriptions {
     subscriptions: Vec<Subscription>,
 }
 
-#[account]
-#[derive(PartialEq, Debug)]
+#[zero_copy]
+#[derive(PartialEq, Debug, BorshDeserialize, BorshSerialize)]
 pub struct Subscription {
     pub seller: Pubkey,
     pub start_time: i64,        // Subscription start time in Unix timestamp
