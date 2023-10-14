@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-rssss = "3QKjPj2ajRsyRpZfsyqpcDMyN2SF866j5jcRZ6cx4PK6"
+rssss = "7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq"
 
 [registry]
 url = "https://api.apr.dev"

@@ -268,5 +268,8 @@
             "name": "MaxUsersReached",
             "msg": "Max users reached."
         }
-    ]
+    ],
+    "metadata": {
+        "address": "7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq"
+    }
 }
