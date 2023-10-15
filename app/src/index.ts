@@ -1,7 +1,8 @@
 import * as Web3 from '@solana/web3.js';
 import * as fs from 'fs';
 import dotenv from 'dotenv';
-import * as anchor from '@project-serum/anchor';
+// import * as anchor from '@project-serum/anchor';
+import * as anchor from '@coral-xyz/anchor';
 import idl from "../idl/kirby.json";
 
 dotenv.config();
@@ -10,8 +11,10 @@ const PROGRAM_ID = new Web3.PublicKey("7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKM
 
 async function main() {
   const connection = new Web3.Connection("http://127.0.0.1:8899", 'confirmed');
-  const signer = await initializeKeypair();
 
+  const secret = JSON.parse(fs.readFileSync('/Users/davirain/.config/solana/id.json', 'utf8')) as number[];
+  const secretKey = Uint8Array.from(secret);
+  const signer = Web3.Keypair.fromSecretKey(secretKey);
 
   console.log("公钥:", signer.publicKey.toBase58());
   let wallet = new anchor.Wallet(signer);
@@ -20,6 +23,10 @@ async function main() {
 
   console.log("programId:", PROGRAM_ID.toBase58());
   const program = new anchor.Program(idl as anchor.Idl, PROGRAM_ID, provider);
+
+  // await InitializeLoggedInUsers(program, signer);
+  //
+  await initialize(program, signer, 1_00_000_000);
 }
 
 main()
@@ -32,27 +39,10 @@ main()
     process.exit(1);
   });
 
-async function initializeKeypair(): Promise<Web3.Keypair> {
-  // 如果没有私钥，生成新密钥对
-  if (!process.env.PRIVATE_KEY) {
-    console.log('正在生成新密钥对... 🗝️');
-    const signer = Web3.Keypair.generate();
-
-    console.log('正在创建 .env 文件');
-    fs.writeFileSync('.env', `PRIVATE_KEY=[${signer.secretKey.toString()}]`);
-
-    return signer;
-  }
-
-  const secret = JSON.parse(process.env.PRIVATE_KEY ?? '') as number[];
-  const secretKey = Uint8Array.from(secret);
-  const keypairFromSecret = Web3.Keypair.fromSecretKey(secretKey);
-  return keypairFromSecret;
-}
-
 
 /// this is for every use need to call when this user first login this platform
-async function initialize(program: anchor.Program, payer: Web3.Keypair) {
+async function initialize(program: anchor.Program, payer: Web3.Keypair, price: number) {
+
   let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("rss"), payer.publicKey.toBuffer()],
     PROGRAM_ID
@@ -71,7 +61,7 @@ async function initialize(program: anchor.Program, payer: Web3.Keypair) {
   );
 
   const transactionSignature = await program.methods
-    .initialize()
+    .initialize(price)
     .accounts({
       rssSourceAccount: rssSourceAccount,
       subscriptionsAccount: subscriptionsAccount,
@@ -116,7 +106,7 @@ async function updateItem(program: anchor.Program, payer: Web3.Keypair, newDocum
   console.log("rssSourceAccount:", rssSourceAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .updateItem({ newDocument })
+    .updateItem(newDocument)
     .accounts({
       rssSourceAccount: rssSourceAccount,
       user: payer.publicKey,
@@ -128,7 +118,7 @@ async function updateItem(program: anchor.Program, payer: Web3.Keypair, newDocum
   )
 }
 
-async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccount: Web3.PublicKey, subscriptionAccount: Web3.PublicKey, price: Number) {
+async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccount: Web3.PublicKey, subscriptionAccount: Web3.PublicKey, price: number) {
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("subscriptions"), payer.publicKey.toBuffer()],
     PROGRAM_ID
@@ -136,7 +126,7 @@ async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccoun
   console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .subscribe({ price })
+    .subscribe(price)
     .accounts({
       feeAccount: feeAccount,
       subscriptionAccount: subscriptionAccount,
@@ -197,7 +187,7 @@ async function getAccount(connection: Web3.Connection, accountPubKey: Web3.Publi
   console.log(accounts);
 }
 
-async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypair, currentTime: Number) {
+async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypair, currentTime: number) {
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("subscriptions")],
     PROGRAM_ID
@@ -205,7 +195,7 @@ async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypa
   console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .getActiveSubscriptions({ currentTime })
+    .getActiveSubscriptions(currentTime)
     .accounts({
       subscriptionsAccount: subscriptionsAccount,
       user: payer.publicKey,

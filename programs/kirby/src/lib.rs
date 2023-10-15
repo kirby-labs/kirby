@@ -67,6 +67,7 @@ pub mod kirby {
     }
 
     // list rss source you want to sell
+    // this price is subscription account price and read from frontend
     pub fn subscribe(ctx: Context<Subscribe>, price: u64) -> Result<()> {
         let subscription_account = ctx.accounts.subscription_account.borrow_mut();
 
@@ -174,6 +175,7 @@ pub struct Initialize<'info> {
         seeds = [LOGGED_IN_USERS],
         bump
     )]
+    // TODO: mayber need realloc
     pub logged_in_users_account: Account<'info, LoggedInUsers>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -251,7 +253,7 @@ pub struct InitializeLoggedInUsers<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + (32 * MAX_USERS),  // Assume a maximum number of users for space allocation
+        space = 10240,  // TODO: size value Assume a maximum number of users for space allocation
         seeds = [LOGGED_IN_USERS],
         bump
     )]
