@@ -1,9 +1,10 @@
 import * as Web3 from '@solana/web3.js';
 import * as fs from 'fs';
 import dotenv from 'dotenv';
-// import * as anchor from '@project-serum/anchor';
 import * as anchor from '@coral-xyz/anchor';
 import idl from "../idl/kirby.json";
+import assert from "assert";
+import * as borsh from "borsh";
 
 dotenv.config();
 
@@ -26,7 +27,13 @@ async function main() {
 
   // await InitializeLoggedInUsers(program, signer);
   //
-  await initialize(program, signer, 1_00_000_000);
+  // await initialize(program, signer);
+
+  // await registerLogin(program, signer);
+
+  // await changeSubPrice(program, signer, 1_000_000_000);
+
+  // await updateItem(program, signer, Buffer.from("123"));
 }
 
 main()
@@ -41,27 +48,31 @@ main()
 
 
 /// this is for every use need to call when this user first login this platform
-async function initialize(program: anchor.Program, payer: Web3.Keypair, price: number) {
+async function initialize(program: anchor.Program, payer: Web3.Keypair) {
 
   let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("rss"), payer.publicKey.toBuffer()],
+    [Buffer.from("rss"), payer.publicKey.toBytes()],
     PROGRAM_ID
   );
+  console.log("rssSourceAccount:", rssSourceAccount.toBase58());
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("subscriptions"), payer.publicKey.toBuffer()],
+    [Buffer.from("subscriptions"), payer.publicKey.toBytes()],
     PROGRAM_ID
   );
+  console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
   let [subscriptionPriceAcc] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("sub-price"), payer.publicKey.toBuffer()],
+    [Buffer.from("sub-price"), payer.publicKey.toBytes()],
     PROGRAM_ID
   );
+  console.log("subscriptionPriceAcc:", subscriptionPriceAcc.toBase58());
   let [loggedInUsersAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("logged-in-users"), payer.publicKey.toBuffer()],
+    [Buffer.from("logged-in-users"), payer.publicKey.toBytes()],
     PROGRAM_ID
   );
+  console.log("loggedInUsersAccount:", loggedInUsersAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .initialize(price)
+    .initialize()
     .accounts({
       rssSourceAccount: rssSourceAccount,
       subscriptionsAccount: subscriptionsAccount,
@@ -77,7 +88,28 @@ async function initialize(program: anchor.Program, payer: Web3.Keypair, price: n
   )
 }
 
-async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair) {
+async function registerLogin(program: anchor.Program, payer: Web3.Keypair) {
+  let [initializeLoggedInUsersAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("logged-in-users")],
+    PROGRAM_ID
+  );
+  console.log("initializeLoggedInUsersAccount:", initializeLoggedInUsersAccount.toBase58());
+
+  const transactionSignature = await program.methods
+    .login()
+    .accounts({
+      loggedInUsersAccount: initializeLoggedInUsersAccount,
+      user: payer.publicKey,
+    })
+    .rpc();
+
+  console.log(
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+  )
+}
+
+
+async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair, price: number) {
   let [subscriptionPriceAcc] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("sub-price"), payer.publicKey.toBuffer()],
     PROGRAM_ID
@@ -85,7 +117,7 @@ async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair) {
   console.log("subscriptionPriceAcc:", subscriptionPriceAcc.toBase58());
 
   const transactionSignature = await program.methods
-    .changeSubPrice()
+    .changeSubPrice(new anchor.BN(price))
     .accounts({
       subscriptionPriceAcc: subscriptionPriceAcc,
       user: payer.publicKey,
@@ -96,7 +128,6 @@ async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair) {
     `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
   )
 }
-
 
 async function updateItem(program: anchor.Program, payer: Web3.Keypair, newDocument: Buffer) {
   let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -126,7 +157,7 @@ async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccoun
   console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .subscribe(price)
+    .subscribe(new anchor.BN(price))
     .accounts({
       feeAccount: feeAccount,
       subscriptionAccount: subscriptionAccount,
@@ -176,6 +207,7 @@ async function getAllLoggedInUser(program: anchor.Program, payer: Web3.Keypair) 
   // TODO: this need return
   // And all logged in users accunt is pubkey and need get all real account
   console.log("allLoggedInUsersAccount: ", allLoggedInUsersAccount);
+  // TODO: this need return
 }
 
 
@@ -187,7 +219,7 @@ async function getAccount(connection: Web3.Connection, accountPubKey: Web3.Publi
   console.log(accounts);
 }
 
-async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypair, currentTime: number) {
+async function getActiveSubscriptions(provider: anchor.Provider, program: anchor.Program, payer: Web3.Keypair, currentTime: number) {
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("subscriptions")],
     PROGRAM_ID
@@ -195,7 +227,7 @@ async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypa
   console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
 
   const transactionSignature = await program.methods
-    .getActiveSubscriptions(currentTime)
+    .getActiveSubscriptions(new anchor.BN(currentTime))
     .accounts({
       subscriptionsAccount: subscriptionsAccount,
       user: payer.publicKey,
@@ -205,4 +237,33 @@ async function getActiveSubscriptions(program: anchor.Program, payer: Web3.Keypa
   console.log(
     `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
   )
+
+  let t = await provider.connection.getTransaction(transactionSignature, {
+    commitment: "confirmed",
+  });
+
+  // const [key, data, buffer] = getReturnLog(t);
+  // assert.equal(key, PROGRAM_ID);
+
+  // // Check for matching log on receive side
+  // let receiveLog = t?.meta.logMessages.find(
+  //   (log) => log == `Program data: ${data}`
+  // );
+  // assert(receiveLog !== undefined);
+
+  // const reader = new borsh.BinaryReader(buffer);
+  // const array = reader.readArray(() => reader.readU8());
+  // assert.deepStrictEqual(array, [12, 13, 14, 100]);
+
 }
+
+// const getReturnLog = (confirmedTransaction: Web3.TransactionResponse) => {
+//   const prefix = "Program return: ";
+//   let log = confirmedTransaction.meta.logMessages.find((log) =>
+//     log.startsWith(prefix)
+//   );
+//   log = log.slice(prefix.length);
+//   const [key, data] = log.split(" ", 2);
+//   const buffer = Buffer.from(data, "base64");
+//   return [key, data, buffer];
+// };

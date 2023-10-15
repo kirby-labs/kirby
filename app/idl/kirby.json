@@ -24,6 +24,22 @@
             "args": []
         },
         {
+            "name": "login",
+            "accounts": [
+                {
+                    "name": "loggedInUsersAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "user",
+                    "isMut": true,
+                    "isSigner": true
+                }
+            ],
+            "args": []
+        },
+        {
             "name": "initialize",
             "accounts": [
                 {
@@ -42,11 +58,6 @@
                     "isSigner": false
                 },
                 {
-                    "name": "loggedInUsersAccount",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
                     "name": "user",
                     "isMut": true,
                     "isSigner": true
@@ -57,12 +68,7 @@
                     "isSigner": false
                 }
             ],
-            "args": [
-                {
-                    "name": "price",
-                    "type": "u64"
-                }
-            ]
+            "args": []
         },
         {
             "name": "changeSubPrice",

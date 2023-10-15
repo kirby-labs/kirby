@@ -20,6 +20,8 @@ pub const RSS_SUBSCRIPTIONS: &[u8] = b"subscriptions";
 pub const RSS: &[u8] = b"rss";
 pub const SUB_PRICE: &[u8] = b"sub-price";
 
+pub const DEFAULT_PRICE: u64 = 100_000_000;
+
 #[program]
 pub mod kirby {
     use super::*;
@@ -33,7 +35,17 @@ pub mod kirby {
         Ok(())
     }
 
-    pub fn initialize(ctx: Context<Initialize>, price: u64) -> Result<()> {
+    pub fn login(ctx: Context<Login>) -> Result<()> {
+        let logged_in_users_account = ctx.accounts.logged_in_users_account.borrow_mut();
+        if logged_in_users_account.users.len() < MAX_USERS {
+            logged_in_users_account.users.push(ctx.accounts.user.key());
+            Ok(())
+        } else {
+            Err(ErrorCode::MaxUsersReached.into())
+        }
+    }
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         let rss_source = RssSource::default();
         ctx.accounts.rss_source_account.set_inner(rss_source);
         ctx.accounts
@@ -42,15 +54,10 @@ pub mod kirby {
         ctx.accounts
             .subscription_price_acc
             .set_inner(SubscriptionPrice {
-                price_one_month: price,
+                price_one_month: DEFAULT_PRICE,
             });
-        let logged_in_users_account = ctx.accounts.logged_in_users_account.borrow_mut();
-        if logged_in_users_account.users.len() < MAX_USERS {
-            logged_in_users_account.users.push(ctx.accounts.user.key());
-            Ok(())
-        } else {
-            Err(ErrorCode::MaxUsersReached.into())
-        }
+
+        Ok(())
     }
 
     pub fn change_sub_price(ctx: Context<ChangeSubPrice>, price: u64) -> Result<()> {
@@ -149,7 +156,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + RssSource::SIZE,
+        space = 10240,
         seeds = [RSS, user.key().as_ref()],
         bump
     )]
@@ -157,7 +164,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + size_of::<Subscriptions>(),
+        space = 10240,
         seeds = [RSS_SUBSCRIPTIONS, user.key().as_ref()],
         bump
     )]
@@ -170,6 +177,13 @@ pub struct Initialize<'info> {
         bump
     )]
     pub subscription_price_acc: Account<'info, SubscriptionPrice>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Login<'info> {
     #[account(
         mut,
         seeds = [LOGGED_IN_USERS],
@@ -179,7 +193,6 @@ pub struct Initialize<'info> {
     pub logged_in_users_account: Account<'info, LoggedInUsers>,
     #[account(mut)]
     pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
