@@ -53,7 +53,7 @@
                     "isSigner": false
                 },
                 {
-                    "name": "subscriptionPriceAcc",
+                    "name": "accountRssSetting",
                     "isMut": true,
                     "isSigner": false
                 },
@@ -68,13 +68,18 @@
                     "isSigner": false
                 }
             ],
-            "args": []
+            "args": [
+                {
+                    "name": "price",
+                    "type": "u64"
+                }
+            ]
         },
         {
             "name": "changeSubPrice",
             "accounts": [
                 {
-                    "name": "subscriptionPriceAcc",
+                    "name": "accountRssSetting",
                     "isMut": true,
                     "isSigner": false
                 },
@@ -201,10 +206,14 @@
             }
         },
         {
-            "name": "SubscriptionPrice",
+            "name": "AccountRssSetting",
             "type": {
                 "kind": "struct",
                 "fields": [
+                    {
+                        "name": "isInitialized",
+                        "type": "bool"
+                    },
                     {
                         "name": "priceOneMonth",
                         "type": "u64"

@@ -18,9 +18,7 @@ pub const MAX_USERS: usize = 1000;
 pub const LOGGED_IN_USERS: &[u8] = b"logged-in-users";
 pub const RSS_SUBSCRIPTIONS: &[u8] = b"subscriptions";
 pub const RSS: &[u8] = b"rss";
-pub const SUB_PRICE: &[u8] = b"sub-price";
-
-pub const DEFAULT_PRICE: u64 = 100_000_000;
+pub const ACCOUNT_SETTING: &[u8] = b"account-setting";
 
 #[program]
 pub mod kirby {
@@ -45,23 +43,26 @@ pub mod kirby {
         }
     }
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        let rss_source = RssSource::default();
+    pub fn initialize(ctx: Context<Initialize>, price: u64) -> Result<()> {
+        let rss_source = RssSource {
+            document: Vec::new(),
+        };
         ctx.accounts.rss_source_account.set_inner(rss_source);
         ctx.accounts
             .subscriptions_account
             .set_inner(Subscriptions::default());
         ctx.accounts
-            .subscription_price_acc
-            .set_inner(SubscriptionPrice {
-                price_one_month: DEFAULT_PRICE,
+            .account_rss_setting
+            .set_inner(AccountRssSetting {
+                is_initialized: true,
+                price_one_month: price,
             });
 
         Ok(())
     }
 
     pub fn change_sub_price(ctx: Context<ChangeSubPrice>, price: u64) -> Result<()> {
-        let subscription_price_acc = ctx.accounts.subscription_price_acc.borrow_mut();
+        let subscription_price_acc = ctx.accounts.account_rss_setting.borrow_mut();
         subscription_price_acc.price_one_month = price;
         Ok(())
     }
@@ -172,11 +173,11 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + size_of::<SubscriptionPrice>(),
-        seeds = [SUB_PRICE, user.key().as_ref()],
+        space = 8 + size_of::<AccountRssSetting>(),
+        seeds = [ACCOUNT_SETTING, user.key().as_ref()],
         bump
     )]
-    pub subscription_price_acc: Account<'info, SubscriptionPrice>,
+    pub account_rss_setting: Account<'info, AccountRssSetting>,
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -199,10 +200,10 @@ pub struct Login<'info> {
 pub struct ChangeSubPrice<'info> {
     #[account(
         mut,
-        seeds = [SUB_PRICE, user.key().as_ref()],
+        seeds = [ACCOUNT_SETTING, user.key().as_ref()],
         bump
     )]
-    pub subscription_price_acc: Account<'info, SubscriptionPrice>,
+    pub account_rss_setting: Account<'info, AccountRssSetting>,
     #[account(mut)]
     pub user: Signer<'info>,
 }
@@ -290,7 +291,8 @@ pub struct RssSource {
 
 #[account]
 #[derive(Debug, PartialEq)]
-pub struct SubscriptionPrice {
+pub struct AccountRssSetting {
+    is_initialized: bool,
     price_one_month: u64,
 }
 

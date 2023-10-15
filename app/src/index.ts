@@ -27,7 +27,7 @@ async function main() {
 
   // await InitializeLoggedInUsers(program, signer);
   //
-  // await initialize(program, signer);
+  await login(program, signer.publicKey, provider);
 
   // await registerLogin(program, signer);
 
@@ -47,79 +47,120 @@ main()
   });
 
 
-/// this is for every use need to call when this user first login this platform
-async function initialize(program: anchor.Program, payer: Web3.Keypair) {
-
+async function login(program: anchor.Program, payer: Web3.PublicKey, provider: anchor.AnchorProvider) {
   let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("rss"), payer.publicKey.toBytes()],
+    [Buffer.from("rss"), payer.toBytes()],
     PROGRAM_ID
   );
   console.log("rssSourceAccount:", rssSourceAccount.toBase58());
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("subscriptions"), payer.publicKey.toBytes()],
+    [Buffer.from("subscriptions"), payer.toBytes()],
     PROGRAM_ID
   );
   console.log("subscriptionsAccount:", subscriptionsAccount.toBase58());
-  let [subscriptionPriceAcc] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("sub-price"), payer.publicKey.toBytes()],
+  let [accountRssSetting] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("account-setting"), payer.toBytes()],
     PROGRAM_ID
   );
-  console.log("subscriptionPriceAcc:", subscriptionPriceAcc.toBase58());
+  console.log("accountRssSetting:", accountRssSetting.toBase58());
   let [loggedInUsersAccount] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("logged-in-users"), payer.publicKey.toBytes()],
+    [Buffer.from("logged-in-users"), payer.toBytes()],
     PROGRAM_ID
   );
   console.log("loggedInUsersAccount:", loggedInUsersAccount.toBase58());
 
-  const transactionSignature = await program.methods
-    .initialize()
+  const initializeAccountInstruction = await program.methods
+    .initialize(new anchor.BN(100_000_000)) // set defualt price
     .accounts({
       rssSourceAccount: rssSourceAccount,
       subscriptionsAccount: subscriptionsAccount,
-      subscriptionPriceAcc: subscriptionPriceAcc,
+      accountRssSetting: accountRssSetting,
       loggedInUsersAccount: loggedInUsersAccount,
-      user: payer.publicKey,
+      user: payer,
       systemProgram: anchor.web3.SystemProgram.programId,
     })
-    .rpc();
+    .instruction();
 
-  console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
-  )
-}
-
-async function registerLogin(program: anchor.Program, payer: Web3.Keypair) {
   let [initializeLoggedInUsersAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("logged-in-users")],
     PROGRAM_ID
   );
-  console.log("initializeLoggedInUsersAccount:", initializeLoggedInUsersAccount.toBase58());
 
-  const transactionSignature = await program.methods
+  const addLoggInUserInstruction = await program.methods
     .login()
     .accounts({
       loggedInUsersAccount: initializeLoggedInUsersAccount,
-      user: payer.publicKey,
+      user: payer,
     })
-    .rpc();
+    .instruction();
 
-  console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
-  )
+  // Array of instructions
+  const instructions: anchor.web3.TransactionInstruction[] = [
+    initializeAccountInstruction,
+    addLoggInUserInstruction,
+  ];
+
+  await createAndSendV0Tx(instructions, provider, payer);
 }
 
+async function createAndSendV0Tx(
+  txInstructions: anchor.web3.TransactionInstruction[],
+  provider: anchor.AnchorProvider,
+  payer: Web3.PublicKey
+) {
+  // Step 1 - Fetch the latest blockhash
+  let latestBlockhash = await provider.connection.getLatestBlockhash(
+    "confirmed"
+  );
+  console.log(
+    "   ✅ - Fetched latest blockhash. Last Valid Height:",
+    latestBlockhash.lastValidBlockHeight
+  );
+
+  // Step 2 - Generate Transaction Message
+  const messageV0 = new anchor.web3.TransactionMessage({
+    payerKey: payer,
+    recentBlockhash: latestBlockhash.blockhash,
+    instructions: txInstructions,
+  }).compileToV0Message();
+  console.log("   ✅ - Compiled Transaction Message");
+  const transaction = new anchor.web3.VersionedTransaction(messageV0);
+
+  // Step 3 - Sign your transaction with the required `Signers`
+  provider.wallet.signTransaction(transaction);
+  console.log("   ✅ - Transaction Signed");
+
+  // Step 4 - Send our v0 transaction to the cluster
+  const txid = await provider.connection.sendTransaction(transaction, {
+    maxRetries: 5,
+  });
+  console.log("   ✅ - Transaction sent to network");
+
+  // Step 5 - Confirm Transaction
+  const confirmation = await provider.connection.confirmTransaction({
+    signature: txid,
+    blockhash: latestBlockhash.blockhash,
+    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+  });
+  if (confirmation.value.err) {
+    throw new Error(
+      `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
+    );
+  }
+  console.log("🎉 Transaction Succesfully Confirmed!");
+}
 
 async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair, price: number) {
-  let [subscriptionPriceAcc] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("sub-price"), payer.publicKey.toBuffer()],
+  let [accountRssSetting] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("account-setting"), payer.publicKey.toBuffer()],
     PROGRAM_ID
   );
-  console.log("subscriptionPriceAcc:", subscriptionPriceAcc.toBase58());
+  console.log("accountRssSetting:", accountRssSetting.toBase58());
 
   const transactionSignature = await program.methods
     .changeSubPrice(new anchor.BN(price))
     .accounts({
-      subscriptionPriceAcc: subscriptionPriceAcc,
+      accountRssSetting: accountRssSetting,
       user: payer.publicKey,
     })
     .rpc();
@@ -208,6 +249,21 @@ async function getAllLoggedInUser(program: anchor.Program, payer: Web3.Keypair) 
   // And all logged in users accunt is pubkey and need get all real account
   console.log("allLoggedInUsersAccount: ", allLoggedInUsersAccount);
   // TODO: this need return
+}
+
+
+async function isInit(program: anchor.Program, payer: Web3.Keypair) {
+  let [accountRssSetting] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("account-setting")],
+    PROGRAM_ID
+  );
+  console.log("accountRssSetting:", accountRssSetting.toBase58());
+
+  // Fetch the state struct from the network.
+  const allLoggedInUsersAccount = await program.account.accountRssSetting.fetch(accountRssSetting);
+
+  const isInit = allLoggedInUsersAccount.isInit;
+  console.log("isInit: ", isInit);
 }
 
 
