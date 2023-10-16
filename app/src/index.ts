@@ -50,12 +50,13 @@ async function main() {
   //   < /opml>
   // `));
   // await updateItem(program, signer, Buffer.from("123"));
-  await readItem(program, signer);
+  // await readItem(program, signer);
+
   // await isInit(program, signer);
 
   // TODO: have problem
   // await getAllLoggedInUser(program);
-  // await getAccountRssSource(program, signer.publicKey);
+  // await getAccountRssSource(program, signer);
 }
 
 main()
@@ -222,7 +223,7 @@ async function readItem(program: anchor.Program, payer: Web3.Keypair) {
   console.log("rssSourceAccount:", rssSourceAccount.toBase58());
 
   // Fetch the state struct from the network.
-  const result = await program.account.rssSourceAccount.fetch(rssSourceAccount);
+  const result = await program.account.rssSource.fetch(rssSourceAccount);
   console.log("result", result);
 }
 
@@ -281,26 +282,9 @@ async function getAllLoggedInUser(program: anchor.Program) {
   console.log("initializeLoggedInUsersAccount:", initializeLoggedInUsersAccount.toBase58());
 
   // Fetch the state struct from the network.
-  const allLoggedInUsersAccount = await program.account.LoggedInUsers.fetch(initializeLoggedInUsersAccount);
-  // TODO: this need return
+  const allLoggedInUsersAccount = await program.account.loggedInUsers.fetch(initializeLoggedInUsersAccount);
   // And all logged in users accunt is pubkey and need get all real account
   console.log("allLoggedInUsersAccount: ", allLoggedInUsersAccount);
-  // TODO: this need return
-  // problem:
-  // 公钥: ATrkCHG6PnkhVNaVz9tekg4je5cvZcLuZuF5UAxxEvyK
-  // programId: 7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq
-  // initializeLoggedInUsersAccount: 2ESo2aNWWffukjFCdE4K92wrC4fnakmbAmnmSJSGC4Ro
-  // TypeError: Cannot read properties of undefined (reading 'fetch')
-  //     at /Users/davirain/solana/kirby/app/src/index.ts:252:71
-  //     at Generator.next (<anonymous>)
-  //     at /Users/davirain/solana/kirby/app/src/index.ts:31:71
-  //     at new Promise (<anonymous>)
-  //     at __awaiter (/Users/davirain/solana/kirby/app/src/index.ts:27:12)
-  //     at getAllLoggedInUser (/Users/davirain/solana/kirby/app/src/index.ts:211:12)
-  //     at /Users/davirain/solana/kirby/app/src/index.ts:39:9
-  //     at Generator.next (<anonymous>)
-  //     at /Users/davirain/solana/kirby/app/src/index.ts:31:71
-  //     at new Promise (<anonymous>)
 }
 
 
@@ -322,7 +306,7 @@ async function getAccountRssSource(program: anchor.Program, payer: Web3.Keypair)
     [Buffer.from("rss"), payer.publicKey.toBuffer()],
     PROGRAM_ID
   );
-  const result = await program.account.RssSource.fetch(rssSourceAccount);
+  const result = await program.account.rssSource.fetch(rssSourceAccount);
   console.log("rssSource: ", result);
 }
 
