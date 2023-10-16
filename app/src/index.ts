@@ -11,7 +11,9 @@ dotenv.config();
 const PROGRAM_ID = new Web3.PublicKey("7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq");
 
 async function main() {
-  const connection = new Web3.Connection("http://127.0.0.1:8899", 'confirmed');
+  // const connection = new Web3.Connection("http://127.0.0.1:8899", 'confirmed');
+  const connection = new Web3.Connection("https://api.devnet.solana.com", 'confirmed');
+
 
   const secret = JSON.parse(fs.readFileSync('/Users/davirain/.config/solana/id.json', 'utf8')) as number[];
   const secretKey = Uint8Array.from(secret);
@@ -27,13 +29,17 @@ async function main() {
 
   // await InitializeLoggedInUsers(program, signer);
   //
-  await login(program, signer.publicKey, provider);
-
-  // await registerLogin(program, signer);
+  // await login(program, signer.publicKey, provider);
 
   // await changeSubPrice(program, signer, 1_000_000_000);
 
   // await updateItem(program, signer, Buffer.from("123"));
+  //
+  // await isInit(program, signer);
+
+  // TODO: have problem
+  // await getAllLoggedInUser(program);
+  // await getAccountRssSource(program, signer.publicKey);
 }
 
 main()
@@ -135,7 +141,9 @@ async function createAndSendV0Tx(
     maxRetries: 5,
   });
   console.log("   ✅ - Transaction sent to network");
-
+  console.log(
+    `Transaction https://explorer.solana.com/tx/${txid}?cluster=devnet`
+  )
   // Step 5 - Confirm Transaction
   const confirmation = await provider.connection.confirmTransaction({
     signature: txid,
@@ -166,7 +174,7 @@ async function changeSubPrice(program: anchor.Program, payer: Web3.Keypair, pric
     .rpc();
 
   console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
   )
 }
 
@@ -186,7 +194,7 @@ async function updateItem(program: anchor.Program, payer: Web3.Keypair, newDocum
     .rpc();
 
   console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
   )
 }
 
@@ -209,7 +217,7 @@ async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccoun
     .rpc();
 
   console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
   )
 }
 
@@ -231,12 +239,12 @@ async function InitializeLoggedInUsers(program: anchor.Program, payer: Web3.Keyp
     .rpc();
 
   console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
   )
 }
 
 // this need return
-async function getAllLoggedInUser(program: anchor.Program, payer: Web3.Keypair) {
+async function getAllLoggedInUser(program: anchor.Program) {
   let [initializeLoggedInUsersAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("logged-in-users")],
     PROGRAM_ID
@@ -249,30 +257,44 @@ async function getAllLoggedInUser(program: anchor.Program, payer: Web3.Keypair) 
   // And all logged in users accunt is pubkey and need get all real account
   console.log("allLoggedInUsersAccount: ", allLoggedInUsersAccount);
   // TODO: this need return
+  // problem:
+  // 公钥: ATrkCHG6PnkhVNaVz9tekg4je5cvZcLuZuF5UAxxEvyK
+  // programId: 7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq
+  // initializeLoggedInUsersAccount: 2ESo2aNWWffukjFCdE4K92wrC4fnakmbAmnmSJSGC4Ro
+  // TypeError: Cannot read properties of undefined (reading 'fetch')
+  //     at /Users/davirain/solana/kirby/app/src/index.ts:252:71
+  //     at Generator.next (<anonymous>)
+  //     at /Users/davirain/solana/kirby/app/src/index.ts:31:71
+  //     at new Promise (<anonymous>)
+  //     at __awaiter (/Users/davirain/solana/kirby/app/src/index.ts:27:12)
+  //     at getAllLoggedInUser (/Users/davirain/solana/kirby/app/src/index.ts:211:12)
+  //     at /Users/davirain/solana/kirby/app/src/index.ts:39:9
+  //     at Generator.next (<anonymous>)
+  //     at /Users/davirain/solana/kirby/app/src/index.ts:31:71
+  //     at new Promise (<anonymous>)
 }
 
 
 async function isInit(program: anchor.Program, payer: Web3.Keypair) {
   let [accountRssSetting] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("account-setting")],
+    [Buffer.from("account-setting"), payer.publicKey.toBuffer()],
     PROGRAM_ID
   );
   console.log("accountRssSetting:", accountRssSetting.toBase58());
 
   // Fetch the state struct from the network.
   const allLoggedInUsersAccount = await program.account.accountRssSetting.fetch(accountRssSetting);
-
-  const isInit = allLoggedInUsersAccount.isInit;
-  console.log("isInit: ", isInit);
+  console.log("allLoggedInUsersAccount: ", allLoggedInUsersAccount);
+  // print allLoggedInUsersAccount:  { isInitialized: true, priceOneMonth: <BN: 3b9aca00> }
 }
 
-
-// todo need to return value
-async function getAccount(connection: Web3.Connection, accountPubKey: Web3.PublicKey) {
-  const accounts = await connection.getAccountInfo(accountPubKey);
-
-  console.log(`Accounts for program ${accountPubKey}: `);
-  console.log(accounts);
+async function getAccountRssSource(program: anchor.Program, payer: Web3.Keypair) {
+  let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("rss"), payer.publicKey.toBuffer()],
+    PROGRAM_ID
+  );
+  const result = await program.account.RssSource.fetch(rssSourceAccount);
+  console.log("rssSource: ", result);
 }
 
 async function getActiveSubscriptions(provider: anchor.Provider, program: anchor.Program, payer: Web3.Keypair, currentTime: number) {
@@ -291,7 +313,7 @@ async function getActiveSubscriptions(provider: anchor.Provider, program: anchor
     .rpc();
 
   console.log(
-    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=custom`
+    `Transaction https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
   )
 
   let t = await provider.connection.getTransaction(transactionSignature, {
