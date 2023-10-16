@@ -10,16 +10,21 @@ dotenv.config();
 
 const PROGRAM_ID = new Web3.PublicKey("7HFvaNrZNfws4u5qGZ9f7gfodsfzg29jvwCAv8PKMLEq");
 
+
 async function main() {
   // const connection = new Web3.Connection("http://127.0.0.1:8899", 'confirmed');
   const connection = new Web3.Connection("https://api.devnet.solana.com", 'confirmed');
 
 
-  const secret = JSON.parse(fs.readFileSync('/Users/davirain/.config/solana/id.json', 'utf8')) as number[];
-  const secretKey = Uint8Array.from(secret);
-  const signer = Web3.Keypair.fromSecretKey(secretKey);
+  // const secret = JSON.parse(fs.readFileSync('/Users/davirain/.config/solana/id.json', 'utf8')) as number[];
+  // const secretKey = Uint8Array.from(secret);
+  // const signer = Web3.Keypair.fromSecretKey(secretKey);
+
+  const signer = await initializeKeypair();
 
   console.log("公钥:", signer.publicKey.toBase58());
+  // await airdropSolIfNeeded(signer, connection);
+
   let wallet = new anchor.Wallet(signer);
   const provider = new anchor.AnchorProvider(connection, wallet, {});
   anchor.setProvider(provider);
@@ -33,8 +38,19 @@ async function main() {
 
   // await changeSubPrice(program, signer, 1_000_000_000);
 
+  // await updateItem(program, signer, Buffer.from(`<opml version="2.0">
+  //     < head >
+  //     <title>Your Subscription List < /title>
+  //     < /head>
+  //     < body >
+  //   <outline text="左耳朵耗子blog" type = "rss" xmlUrl = "https://coolshell.cn/feed" htmlUrl = "https://coolshell.cn/" />
+  //   <outline text="The GitHub Blog" htmlUrl = "https://github.com/blog" type = "rss" xmlUrl = "https://github.com/blog.atom" />
+  //   <outline text="马全一 blog" htmlUrl = "https://maquanyi.com/" type = "rss" xmlUrl = "https://maquanyi.com/rss/feed.xml" />
+  //   </body>
+  //   < /opml>
+  // `));
   // await updateItem(program, signer, Buffer.from("123"));
-  //
+  await readItem(program, signer);
   // await isInit(program, signer);
 
   // TODO: have problem
@@ -198,6 +214,19 @@ async function updateItem(program: anchor.Program, payer: Web3.Keypair, newDocum
   )
 }
 
+async function readItem(program: anchor.Program, payer: Web3.Keypair) {
+  let [rssSourceAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("rss"), payer.publicKey.toBuffer()],
+    PROGRAM_ID
+  );
+  console.log("rssSourceAccount:", rssSourceAccount.toBase58());
+
+  // Fetch the state struct from the network.
+  const result = await program.account.rssSourceAccount.fetch(rssSourceAccount);
+  console.log("result", result);
+}
+
+
 async function subscribe(program: anchor.Program, payer: Web3.Keypair, feeAccount: Web3.PublicKey, subscriptionAccount: Web3.PublicKey, price: number) {
   let [subscriptionsAccount] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("subscriptions"), payer.publicKey.toBuffer()],
@@ -345,3 +374,51 @@ async function getActiveSubscriptions(provider: anchor.Provider, program: anchor
 //   const buffer = Buffer.from(data, "base64");
 //   return [key, data, buffer];
 // };
+
+
+async function initializeKeypair(): Promise<Web3.Keypair> {
+  // 如果没有私钥，生成新密钥对
+  if (!process.env.PRIVATE_KEY) {
+    console.log('正在生成新密钥对... 🗝️');
+    const signer = Web3.Keypair.generate();
+
+    console.log('正在创建 .env 文件');
+    fs.writeFileSync('.env', `PRIVATE_KEY=[${signer.secretKey.toString()}]`);
+
+    return signer;
+  }
+
+  const secret = JSON.parse(process.env.PRIVATE_KEY ?? '') as number[];
+  const secretKey = Uint8Array.from(secret);
+  const keypairFromSecret = Web3.Keypair.fromSecretKey(secretKey);
+  return keypairFromSecret;
+}
+
+async function airdropSolIfNeeded(
+  signer: Web3.Keypair,
+  connection: Web3.Connection
+) {
+  // 检查余额
+  const balance = await connection.getBalance(signer.publicKey);
+  console.log('当前余额为', balance / Web3.LAMPORTS_PER_SOL, 'SOL');
+
+  // 如果余额少于 10 SOL，执行空投
+  if (balance / Web3.LAMPORTS_PER_SOL < 2) {
+    console.log('正在空投 2 SOL');
+    const airdropSignature = await connection.requestAirdrop(
+      signer.publicKey,
+      2 * Web3.LAMPORTS_PER_SOL
+    );
+
+    const latestBlockhash = await connection.getLatestBlockhash();
+
+    await connection.confirmTransaction({
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      signature: airdropSignature,
+    });
+
+    const newBalance = await connection.getBalance(signer.publicKey);
+    console.log('新余额为', newBalance / Web3.LAMPORTS_PER_SOL, 'SOL');
+  }
+}
