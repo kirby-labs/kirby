@@ -38,23 +38,23 @@ async function main() {
 
   // await changeSubPrice(program, signer, 1_000_000_000);
 
-  // await updateItem(program, signer, Buffer.from(`<opml version="2.0">
-  //     < head >
-  //     <title>Your Subscription List < /title>
-  //     < /head>
-  //     < body >
-  //   <outline text="左耳朵耗子blog" type = "rss" xmlUrl = "https://coolshell.cn/feed" htmlUrl = "https://coolshell.cn/" />
-  //   <outline text="The GitHub Blog" htmlUrl = "https://github.com/blog" type = "rss" xmlUrl = "https://github.com/blog.atom" />
-  //   <outline text="马全一 blog" htmlUrl = "https://maquanyi.com/" type = "rss" xmlUrl = "https://maquanyi.com/rss/feed.xml" />
-  //   </body>
-  //   < /opml>
-  // `));
+  await updateItem(program, signer, Buffer.from(`<opml version="2.0">
+      < head >
+      <title>Your Subscription List < /title>
+      < /head>
+      < body >
+    <outline text="Hacker News" type = "rss" xmlUrl = "https://hnrss.org/frontpage" htmlUrl = "https://news.ycombinator.com/" />
+    <outline text="Tech Crunch" htmlUrl = "https://techcrunch.com/" type = "rss" xmlUrl = "https://techcrunch.com/feed/" />
+    <outline text="The New York Times" htmlUrl = "https://www.nytimes.com/" type = "rss" xmlUrl = "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml" />
+    <outline text="The Verge" htmlUrl = "https://www.theverge.com/" type = "rss" xmlUrl = "https://www.theverge.com/rss/index.xml" />
+    </body>
+    < /opml>
+  `));
   // await updateItem(program, signer, Buffer.from("123"));
   // await readItem(program, signer);
 
   // await isInit(program, signer);
 
-  // TODO: have problem
   // await getAllLoggedInUser(program);
   // await getAccountRssSource(program, signer);
 }

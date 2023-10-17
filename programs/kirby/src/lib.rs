@@ -314,8 +314,7 @@ pub struct Subscriptions {
     subscriptions: Vec<Subscription>,
 }
 
-#[zero_copy]
-#[derive(PartialEq, Debug, BorshDeserialize, BorshSerialize)]
+#[derive(Clone, PartialEq, Debug, BorshDeserialize, BorshSerialize)]
 pub struct Subscription {
     pub seller: Pubkey,
     pub start_time: i64,        // Subscription start time in Unix timestamp
